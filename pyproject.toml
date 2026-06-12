@@ -1,0 +1,8 @@
+[project]
+name = "sisi-backend"
+version = "1.0.0"
+description = "SISI Catalog Store API"
+requires-python = ">=3.11"
+
+[tool.fastapi]
+entrypoint = "app.main:app"

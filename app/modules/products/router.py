@@ -1,0 +1,91 @@
+from uuid import UUID
+
+from typing import Annotated, Optional
+
+from fastapi import APIRouter, Depends, Path, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.security import verify_admin_token
+from app.modules.products.schemas import (
+    ProductBulkRequest,
+    ProductBulkResponse,
+    ProductCreate,
+    ProductDetailResponse,
+    ProductUpdate,
+)
+from app.modules.products.service import product_service
+
+router = APIRouter(prefix="/products", tags=["products"])
+
+
+@router.get("")
+async def list_products(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 100,
+    category: Annotated[Optional[str], Query(description="Category slug")] = None,
+    price_min: Annotated[Optional[float], Query(ge=0)] = None,
+    price_max: Annotated[Optional[float], Query(ge=0)] = None,
+    stock: Annotated[Optional[bool], Query()] = None,
+    search: Annotated[Optional[str], Query(min_length=1)] = None,
+    sort_by: Annotated[Optional[str], Query(pattern="^(price|name|created_at)$")] = None,
+    sort_order: Annotated[str, Query(pattern="^(asc|desc)$")] = "asc",
+):
+    return await product_service.get_list(
+        db,
+        skip=skip,
+        limit=limit,
+        category_slug=category,
+        price_min=price_min,
+        price_max=price_max,
+        stock=stock,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+
+@router.get("/{slug}")
+async def get_product(
+    slug: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ProductDetailResponse:
+    return await product_service.get_by_slug(db, slug)
+
+
+@router.post("/bulk", status_code=status.HTTP_201_CREATED)
+async def bulk_create_products(
+    data: ProductBulkRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[dict, Depends(verify_admin_token)],
+) -> ProductBulkResponse:
+    return await product_service.bulk_create(db, data)
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def create_product(
+    data: ProductCreate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[dict, Depends(verify_admin_token)],
+) -> ProductDetailResponse:
+    return await product_service.create(db, data)
+
+
+@router.put("/{product_id}")
+async def update_product(
+    product_id: UUID,
+    data: ProductUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[dict, Depends(verify_admin_token)],
+) -> ProductDetailResponse:
+    return await product_service.update(db, product_id, data)
+
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_product(
+    product_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[dict, Depends(verify_admin_token)],
+) -> None:
+    await product_service.soft_delete(db, product_id)
