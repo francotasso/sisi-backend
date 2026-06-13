@@ -22,12 +22,8 @@ async def _get_jwks() -> dict:
     return _jwks_cache
 
 
-async def verify_admin_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
+async def _verify_token(credentials: HTTPAuthorizationCredentials) -> dict:
     token = credentials.credentials
-
-    last_error = None
     payload = None
 
     try:
@@ -37,8 +33,8 @@ async def verify_admin_token(
             algorithms=["HS256"],
             options={"verify_aud": False},
         )
-    except JWTError as e:
-        last_error = e
+    except JWTError:
+        pass
 
     if payload is None:
         try:
@@ -49,8 +45,8 @@ async def verify_admin_token(
                 algorithms=["ES256"],
                 options={"verify_aud": False},
             )
-        except JWTError as e:
-            last_error = e
+        except JWTError:
+            pass
 
     if payload is None:
         raise HTTPException(
@@ -59,13 +55,30 @@ async def verify_admin_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_metadata = payload.get("user_metadata", {})
-    role = user_metadata.get("role")
+    return payload
 
+
+async def verify_admin_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    payload = await _verify_token(credentials)
+    role = payload.get("user_metadata", {}).get("role")
     if role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin role required",
         )
+    return payload
 
+
+async def verify_editor_access(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    payload = await _verify_token(credentials)
+    role = payload.get("user_metadata", {}).get("role")
+    if role not in ("admin", "editor"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or editor role required",
+        )
     return payload

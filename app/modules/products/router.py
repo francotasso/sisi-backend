@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import verify_admin_token
+from app.core.security import verify_editor_access
 from app.modules.products.schemas import (
     ProductBulkRequest,
     ProductBulkResponse,
@@ -66,7 +66,7 @@ async def get_product(
 async def replace_all_products(
     data: ProductBulkRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    admin: Annotated[dict, Depends(verify_admin_token)],
+    admin: Annotated[dict, Depends(verify_editor_access)],
 ) -> ProductBulkResponse:
     return await product_service.replace_all(db, data)
 
@@ -75,7 +75,7 @@ async def replace_all_products(
 async def bulk_create_products(
     data: ProductBulkRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    admin: Annotated[dict, Depends(verify_admin_token)],
+    admin: Annotated[dict, Depends(verify_editor_access)],
 ) -> ProductBulkResponse:
     return await product_service.bulk_create(db, data)
 
@@ -84,7 +84,7 @@ async def bulk_create_products(
 async def create_product(
     data: ProductCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    admin: Annotated[dict, Depends(verify_admin_token)],
+    admin: Annotated[dict, Depends(verify_editor_access)],
 ) -> ProductDetailResponse:
     return await product_service.create(db, data)
 
@@ -94,7 +94,7 @@ async def update_product(
     product_id: UUID,
     data: ProductUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
-    admin: Annotated[dict, Depends(verify_admin_token)],
+    admin: Annotated[dict, Depends(verify_editor_access)],
 ) -> ProductDetailResponse:
     return await product_service.update(db, product_id, data)
 
@@ -103,6 +103,6 @@ async def update_product(
 async def delete_product(
     product_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
-    admin: Annotated[dict, Depends(verify_admin_token)],
+    admin: Annotated[dict, Depends(verify_editor_access)],
 ) -> None:
     await product_service.soft_delete(db, product_id)
