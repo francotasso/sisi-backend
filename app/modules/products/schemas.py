@@ -71,6 +71,51 @@ class ProductFAQResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProductExportSpecResponse(BaseModel):
+    brand: Optional[str] = None
+    product_type: Optional[str] = None
+    shade: Optional[str] = None
+    finish: Optional[str] = None
+    size: Optional[str] = None
+    ingredients: Optional[str] = None
+    spf: Optional[str] = None
+    skin_type: Optional[str] = None
+    notes: Optional[str] = None
+    benefits: Optional[str] = None
+    includes: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductExportFAQResponse(BaseModel):
+    question: str
+    answer: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductExportItem(BaseModel):
+    name: str
+    price: Decimal
+    discount_price: Optional[Decimal] = None
+    image: Optional[str] = None
+    description: Optional[str] = None
+    short_description: Optional[str] = None
+    stock: bool
+    best_seller: bool = False
+    sku: Optional[str] = None
+    stock_count: int
+    category_id: UUID
+    specs: Optional[ProductExportSpecResponse] = None
+    faqs: Optional[list[ProductExportFAQResponse]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductExportResponse(BaseModel):
+    items: list[ProductExportItem]
+
+
 class ProductCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     price: Decimal = Field(..., gt=0, decimal_places=2)

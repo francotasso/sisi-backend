@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -223,6 +223,24 @@ class ProductRepository:
         product.deleted_at = datetime.now(timezone.utc)
         await db.flush()
         return product
+
+    async def hard_delete_all(self, db: AsyncSession) -> None:
+        await db.execute(delete(ProductFAQ))
+        await db.execute(delete(ProductSpec))
+        await db.execute(delete(Product))
+        await db.flush()
+
+    async def get_all_export(self, db: AsyncSession) -> list[Product]:
+        result = await db.execute(
+            select(Product)
+            .where(Product.deleted_at.is_(None))
+            .options(
+                joinedload(Product.specs),
+                joinedload(Product.faqs),
+            )
+            .order_by(Product.created_at)
+        )
+        return result.unique().scalars().all()
 
     async def slug_exists(self, db: AsyncSession, slug: str) -> bool:
         result = await db.execute(

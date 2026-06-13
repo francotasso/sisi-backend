@@ -12,6 +12,7 @@ from app.modules.products.schemas import (
     ProductBulkResponse,
     ProductCreate,
     ProductDetailResponse,
+    ProductExportResponse,
     ProductUpdate,
 )
 from app.modules.products.service import product_service
@@ -46,12 +47,28 @@ async def list_products(
     )
 
 
+@router.get("/export")
+async def export_products(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ProductExportResponse:
+    return await product_service.export_all(db)
+
+
 @router.get("/{slug}")
 async def get_product(
     slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProductDetailResponse:
     return await product_service.get_by_slug(db, slug)
+
+
+@router.put("/bulk", status_code=status.HTTP_200_OK)
+async def replace_all_products(
+    data: ProductBulkRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[dict, Depends(verify_admin_token)],
+) -> ProductBulkResponse:
+    return await product_service.replace_all(db, data)
 
 
 @router.post("/bulk", status_code=status.HTTP_201_CREATED)

@@ -13,6 +13,8 @@ from app.modules.products.schemas import (
     ProductBulkResponse,
     ProductCreate,
     ProductDetailResponse,
+    ProductExportItem,
+    ProductExportResponse,
     ProductListResponse,
     ProductUpdate,
 )
@@ -243,6 +245,18 @@ class ProductService:
             created=len(product_responses),
             errors=errors,
             products=product_responses,
+        )
+
+    async def replace_all(
+        self, db: AsyncSession, data: ProductBulkRequest
+    ) -> ProductBulkResponse:
+        await self.repository.hard_delete_all(db)
+        return await self.bulk_create(db, data)
+
+    async def export_all(self, db: AsyncSession) -> ProductExportResponse:
+        products = await self.repository.get_all_export(db)
+        return ProductExportResponse(
+            items=[ProductExportItem.model_validate(p) for p in products]
         )
 
     async def soft_delete(
