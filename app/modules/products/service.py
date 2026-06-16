@@ -1,10 +1,12 @@
 from typing import Any, Optional
 from uuid import UUID
 
+from fastapi import UploadFile
 from slugify import slugify
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.core.storage import cloudinary_service
 from app.modules.products.models import Product
 from app.modules.products.repository import product_repository
 from app.modules.products.schemas import (
@@ -171,6 +173,9 @@ class ProductService:
                 db, product_data["name"]
             )
 
+        if "image" in product_data and product.image:
+            cloudinary_service.delete(product.image)
+
         product = await self.repository.update(db, product, product_data)
 
         return ProductDetailResponse(
@@ -257,6 +262,44 @@ class ProductService:
         products = await self.repository.get_all_export(db)
         return ProductExportResponse(
             items=[ProductExportItem.model_validate(p) for p in products]
+        )
+
+    async def upload_image(
+        self, db: AsyncSession, product_id: UUID, file: UploadFile
+    ) -> ProductDetailResponse:
+        product = await self.repository.get_by_id(db, product_id)
+        if not product:
+            raise NotFoundError("Product not found")
+
+        if product.image:
+            cloudinary_service.delete(product.image)
+
+        url = await cloudinary_service.upload(file)
+
+        product.image = url
+        await db.flush()
+        await db.refresh(product)
+        await db.refresh(product, ["category", "specs", "faqs"])
+
+        return ProductDetailResponse(
+            id=product.id,
+            name=product.name,
+            slug=product.slug,
+            price=product.price,
+            category_id=product.category_id,
+            image=product.image,
+            description=product.description,
+            short_description=product.short_description,
+            stock=product.stock,
+            stock_count=product.stock_count,
+            sku=product.sku,
+            discount_price=product.discount_price,
+            best_seller=product.best_seller,
+            created_at=product.created_at,
+            updated_at=product.updated_at,
+            category_name=product.category.name if product.category else None,
+            specs=product.specs,
+            faqs=product.faqs,
         )
 
     async def soft_delete(

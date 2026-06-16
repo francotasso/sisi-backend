@@ -10,10 +10,18 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     DATABASE_ECHO: bool = False
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 5
+    DB_POOL_RECYCLE: int = 3600
 
     SUPABASE_URL: str
     SUPABASE_JWT_SECRET: str
     SUPABASE_SERVICE_KEY: str
+
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
+    MAX_IMAGE_SIZE: int = 5_242_880
 
     CORS_ORIGINS: list[str] = ["*"]
 

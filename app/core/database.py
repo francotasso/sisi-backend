@@ -16,6 +16,10 @@ settings = get_settings()
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DATABASE_ECHO,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_pre_ping=True,
+    pool_recycle=settings.DB_POOL_RECYCLE,
     connect_args={"statement_cache_size": 0},
 )
 
@@ -32,7 +36,10 @@ class Base(DeclarativeBase):
 
 class TimestampMixin:
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=func.gen_random_uuid(),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -5,5 +5,4 @@ __pycache__/
 .venv/
 venv/
 *.db
-alembic/versions/
 .opencode/

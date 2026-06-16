@@ -2,7 +2,7 @@ from uuid import UUID
 
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends, File, Path, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -97,6 +97,16 @@ async def update_product(
     admin: Annotated[dict, Depends(verify_editor_access)],
 ) -> ProductDetailResponse:
     return await product_service.update(db, product_id, data)
+
+
+@router.post("/{product_id}/image")
+async def upload_product_image(
+    product_id: UUID,
+    file: UploadFile = File(...),
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    admin: Annotated[dict, Depends(verify_editor_access)] = None,
+) -> ProductDetailResponse:
+    return await product_service.upload_image(db, product_id, file)
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)

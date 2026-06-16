@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +11,18 @@ import uuid
 
 class Product(TimestampMixin, SoftDeleteMixin, Base):
     __tablename__ = "products"
+
+    __table_args__ = (
+        Index("ix_products_category_price", "category_id", "price"),
+        Index("ix_products_stock_price", "stock", "price"),
+        Index("ix_products_active_slug", "slug", postgresql_where=text("deleted_at IS NULL")),
+        Index(
+            "ix_products_active_category_price",
+            "category_id",
+            "price",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     name: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
@@ -65,7 +77,7 @@ class ProductFAQ(TimestampMixin, Base):
     __tablename__ = "product_faqs"
 
     product_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("products.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("products.id"), index=True, nullable=False
     )
     question: Mapped[str] = mapped_column(String(500), nullable=False)
     answer: Mapped[str] = mapped_column(Text, nullable=False)
