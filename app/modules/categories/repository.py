@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.categories.models import Category
@@ -22,7 +22,10 @@ class CategoryRepository:
 
     async def get_multi(self, db: AsyncSession) -> list[Category]:
         result = await db.execute(
-            select(Category).order_by(Category.name)
+            select(Category).order_by(
+                case((Category.name == "Otros", 1), else_=0),
+                Category.name,
+            )
         )
         return result.scalars().all()
 

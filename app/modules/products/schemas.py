@@ -148,22 +148,16 @@ class ProductUpdate(BaseModel):
     faqs: Optional[list[ProductFAQUpdate]] = None
 
 
-class ProductListResponse(BaseModel):
-    id: UUID
+class ProductCardResponse(BaseModel):
     name: str
     slug: str
     price: Decimal
-    category_id: UUID
-    image: Optional[str] = None
-    short_description: Optional[str] = None
     discount_price: Optional[Decimal] = None
-    best_seller: bool = False
+    image: Optional[str] = None
     stock: bool
-    stock_count: int
     sku: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
     category_name: Optional[str] = None
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str
     MAX_IMAGE_SIZE: int = 5_242_880
 
+    UPSTASH_REDIS_REST_URL: str | None = None
+    UPSTASH_REDIS_REST_TOKEN: str | None = None
+
     CORS_ORIGINS: list[str] = ["*"]
 
     LOG_LEVEL: str = "INFO"

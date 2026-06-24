@@ -1,3 +1,8 @@
+import os
+
+os.environ["UPSTASH_REDIS_REST_URL"] = ""
+os.environ["UPSTASH_REDIS_REST_TOKEN"] = ""
+
 from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import uuid4

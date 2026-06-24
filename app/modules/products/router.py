@@ -10,6 +10,7 @@ from app.core.security import verify_editor_access
 from app.modules.products.schemas import (
     ProductBulkRequest,
     ProductBulkResponse,
+    ProductCardResponse,
     ProductCreate,
     ProductDetailResponse,
     ProductExportResponse,
@@ -47,11 +48,38 @@ async def list_products(
     )
 
 
+@router.get("/newest")
+async def get_newest_products(
+    limit: Annotated[int, Query(ge=1, le=50)] = 4,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+) -> list[ProductCardResponse]:
+    return await product_service.get_newest(db, limit)
+
+
+@router.get("/best-sellers")
+async def get_best_sellers(
+    limit: Annotated[int, Query(ge=1, le=50)] = 4,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+) -> list[ProductCardResponse]:
+    return await product_service.get_best_sellers(db, limit)
+
+
 @router.get("/export")
 async def export_products(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProductExportResponse:
     return await product_service.export_all(db)
+
+
+@router.get("/batch")
+async def get_products_batch(
+    slugs: Annotated[str, Query(description="Comma-separated list of product slugs")],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[ProductCardResponse]:
+    slug_list = [s.strip() for s in slugs.split(",") if s.strip()]
+    if not slug_list:
+        return []
+    return await product_service.get_by_slugs(db, slug_list)
 
 
 @router.get("/{slug}")

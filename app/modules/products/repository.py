@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -130,40 +130,55 @@ class ProductRepository:
         return result.scalar()
 
     async def create_multi(self, db: AsyncSession, items: list[dict]) -> list[Product]:
-        products = []
-        all_specs = []
-        all_faqs = []
+        now = datetime.now(timezone.utc)
+        products_data = []
+        all_specs_data = []
+        all_faqs_data = []
 
         for data in items:
-            specs_data = data.pop("specs", None)
-            faqs_data = data.pop("faqs", None)
+            product_id = uuid4()
+            specs = data.pop("specs", None)
+            faqs = data.pop("faqs", None)
+            all_specs_data.append(specs)
+            all_faqs_data.append(faqs)
+            products_data.append({
+                "id": product_id,
+                **data,
+                "created_at": now,
+                "updated_at": now,
+            })
 
-            product = Product(**data)
-            db.add(product)
-            products.append(product)
+        await db.execute(insert(Product), products_data)
 
-            if specs_data:
-                all_specs.append((product, specs_data))
-            if faqs_data:
-                all_faqs.append((product, faqs_data))
+        specs_inserts = [
+            {"product_id": p["id"], **s}
+            for p, s in zip(products_data, all_specs_data)
+            if s
+        ]
+        if specs_inserts:
+            await db.execute(insert(ProductSpec), specs_inserts)
+
+        faqs_inserts = []
+        for p, faqs in zip(products_data, all_faqs_data):
+            if faqs:
+                for faq in faqs:
+                    faqs_inserts.append({"product_id": p["id"], **faq})
+        if faqs_inserts:
+            await db.execute(insert(ProductFAQ), faqs_inserts)
 
         await db.flush()
 
-        for product, specs_data in all_specs:
-            spec = ProductSpec(product_id=product.id, **specs_data)
-            db.add(spec)
-
-        for product, faqs_data in all_faqs:
-            for faq_data in faqs_data:
-                faq = ProductFAQ(product_id=product.id, **faq_data)
-                db.add(faq)
-
-        await db.flush()
-
-        for product in products:
-            await db.refresh(product, ["category", "specs", "faqs"])
-
-        return products
+        product_ids = [p["id"] for p in products_data]
+        result = await db.execute(
+            select(Product)
+            .where(Product.id.in_(product_ids))
+            .options(
+                joinedload(Product.category),
+                joinedload(Product.specs),
+                joinedload(Product.faqs),
+            )
+        )
+        return result.unique().scalars().all()
 
     async def create(self, db: AsyncSession, data: dict) -> Product:
         specs_data = data.pop("specs", None)
@@ -242,9 +257,53 @@ class ProductRepository:
         )
         return result.unique().scalars().all()
 
+    async def get_newest(self, db: AsyncSession, limit: int) -> list[Product]:
+        result = await db.execute(
+            select(Product)
+            .where(Product.deleted_at.is_(None))
+            .options(joinedload(Product.category))
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def get_best_sellers(self, db: AsyncSession, limit: int) -> list[Product]:
+        result = await db.execute(
+            select(Product)
+            .where(Product.deleted_at.is_(None), Product.best_seller.is_(True))
+            .options(joinedload(Product.category))
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+        )
+        return result.scalars().all()
+
+    async def get_by_slugs(self, db: AsyncSession, slugs: list[str]) -> list[Product]:
+        result = await db.execute(
+            select(Product)
+            .where(Product.slug.in_(slugs), Product.deleted_at.is_(None))
+            .options(joinedload(Product.category))
+        )
+        return result.unique().scalars().all()
+
+    async def get_all_slugs(self, db: AsyncSession) -> set[str]:
+        result = await db.execute(select(Product.slug))
+        return {row[0] for row in result.all()}
+
+    async def get_all_skus(self, db: AsyncSession) -> set[str]:
+        result = await db.execute(
+            select(Product.sku).where(Product.sku.isnot(None))
+        )
+        return {row[0] for row in result.all()}
+
     async def slug_exists(self, db: AsyncSession, slug: str) -> bool:
         result = await db.execute(
             select(Product).where(Product.slug == slug)
+        )
+        return result.scalars().first() is not None
+
+    async def sku_exists(self, db: AsyncSession, sku: str) -> bool:
+        result = await db.execute(
+            select(Product).where(Product.sku == sku)
         )
         return result.scalars().first() is not None
 

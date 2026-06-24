@@ -147,6 +147,59 @@ class TestProducts:
         assert resp.json()["total"] == 1
         assert resp.json()["items"][0]["name"] == "Replacement"
 
+    async def test_get_products_by_slugs(self, client: AsyncClient, product, category, db_session):
+        from app.modules.products.models import Product
+        second = Product(name="Second Product", slug="second-product", price=25.00, category_id=category.id)
+        db_session.add(second)
+        await db_session.flush()
+
+        resp = await client.get("/api/v1/products/batch?slugs=test-product,second-product")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        slugs = {p["slug"] for p in data}
+        assert slugs == {"test-product", "second-product"}
+        assert "specs" not in data[0]
+        assert "faqs" not in data[0]
+
+    async def test_get_products_by_slugs_empty(self, client: AsyncClient):
+        resp = await client.get("/api/v1/products/batch?slugs=nonexistent1,nonexistent2")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_get_products_by_slugs_no_slugs(self, client: AsyncClient):
+        resp = await client.get("/api/v1/products/batch?slugs=")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_get_newest_products(self, client: AsyncClient, product, category, db_session):
+        from app.modules.products.models import Product
+        second = Product(name="Second Product", slug="second-product", price=25.00, category_id=category.id)
+        db_session.add(second)
+        await db_session.flush()
+
+        resp = await client.get("/api/v1/products/newest?limit=2")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        slugs = {p["slug"] for p in data}
+        assert slugs == {"test-product", "second-product"}
+
+    async def test_get_best_sellers(self, client: AsyncClient, category, db_session):
+        from app.modules.products.models import Product
+        p1 = Product(name="Best Seller 1", slug="best-1", price=10.00, category_id=category.id, best_seller=True)
+        p2 = Product(name="Best Seller 2", slug="best-2", price=20.00, category_id=category.id, best_seller=True)
+        p3 = Product(name="Normal", slug="normal", price=30.00, category_id=category.id, best_seller=False)
+        db_session.add_all([p1, p2, p3])
+        await db_session.flush()
+
+        resp = await client.get("/api/v1/products/best-sellers?limit=10")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        slugs = {p["slug"] for p in data}
+        assert slugs == {"best-1", "best-2"}
+
     async def test_upload_image(self, client: AsyncClient, product):
         with patch("cloudinary.uploader.upload") as mock_upload:
             mock_upload.return_value = {"secure_url": "https://res.cloudinary.com/demo/image/upload/v1/products/abc123.jpg"}

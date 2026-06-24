@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -48,6 +48,16 @@ async def update_category(
     admin: Annotated[dict, Depends(verify_admin_token)],
 ) -> CategoryResponse:
     return await category_service.update(db, category_id, data)
+
+
+@router.post("/{category_id}/image")
+async def upload_category_image(
+    category_id: UUID,
+    file: UploadFile = File(...),
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    admin: Annotated[dict, Depends(verify_admin_token)] = None,
+) -> CategoryResponse:
+    return await category_service.upload_image(db, category_id, file)
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
