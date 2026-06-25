@@ -1,8 +1,3 @@
-import os
-
-os.environ["UPSTASH_REDIS_REST_URL"] = ""
-os.environ["UPSTASH_REDIS_REST_TOKEN"] = ""
-
 from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import uuid4
@@ -14,11 +9,17 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.cache import clear_cache
 from app.core.database import Base, get_db
 from app.core.security import verify_admin_token, verify_editor_access
 from app.main import app
 
 TEST_DSN = "sqlite+aiosqlite:///./test.db"
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    clear_cache()
 
 
 @pytest_asyncio.fixture(scope="session")

@@ -1,9 +1,12 @@
 from functools import lru_cache
 
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+
     PROJECT_NAME: str = "SISI Backend"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
@@ -23,16 +26,9 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str
     MAX_IMAGE_SIZE: int = 5_242_880
 
-    UPSTASH_REDIS_REST_URL: str | None = None
-    UPSTASH_REDIS_REST_TOKEN: str | None = None
-
     CORS_ORIGINS: list[str] = ["*"]
 
     LOG_LEVEL: str = "INFO"
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 @lru_cache

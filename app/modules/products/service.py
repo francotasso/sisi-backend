@@ -84,10 +84,12 @@ class ProductService:
 
         cached = await cache_get(cache_key)
         if cached is not None:
-            cached["items"] = [
-                ProductCardResponse(**item) for item in cached["items"]
-            ]
-            return cached
+            return {
+                "items": [ProductCardResponse(**item) for item in cached["items"]],
+                "total": cached["total"],
+                "skip": cached["skip"],
+                "limit": cached["limit"],
+            }
 
         products = await self.repository.get_multi(
             db,
@@ -125,15 +127,19 @@ class ProductService:
             for p in products
         ]
 
-        result = {
+        await cache_set(cache_key, 120, {
             "items": [i.model_dump(mode="json") for i in items],
             "total": total,
             "skip": skip,
             "limit": limit,
+        })
+
+        return {
+            "items": items,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
         }
-        await cache_set(cache_key, 120, result)
-        result["items"] = items
-        return result
 
     async def get_by_slug(
         self, db: AsyncSession, slug: str
